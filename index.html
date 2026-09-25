@@ -28,7 +28,25 @@
     <label class="field">
       <span>Цвет обложки</span>
       <div class="swatches" id="colorSwatches"></div>
-      <input id="customColorInput" type="color" value="#8b2f2f">
+
+      <div class="custom-picker">
+        <div class="custom-picker-head">
+          <span class="custom-picker-label">Свой оттенок</span>
+          <div class="color-preview" id="colorPreview"></div>
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill hue-fill"></div>
+          <input type="range" id="hueRange" min="0" max="360" value="350" aria-label="Оттенок">
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill" id="satFill"></div>
+          <input type="range" id="satRange" min="0" max="100" value="45" aria-label="Насыщенность">
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill" id="lightFill"></div>
+          <input type="range" id="lightRange" min="0" max="100" value="32" aria-label="Яркость">
+        </div>
+      </div>
     </label>
     <div class="modal-actions">
       <button id="cancelAddBook" class="btn btn-ghost">Отмена</button>
