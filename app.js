@@ -48,7 +48,12 @@
   const addBookModal = document.getElementById("addBookModal");
   const bookTitleInput = document.getElementById("bookTitleInput");
   const colorSwatches = document.getElementById("colorSwatches");
-  const customColorInput = document.getElementById("customColorInput");
+  const hueRange = document.getElementById("hueRange");
+  const satRange = document.getElementById("satRange");
+  const lightRange = document.getElementById("lightRange");
+  const colorPreview = document.getElementById("colorPreview");
+  const satFill = document.getElementById("satFill");
+  const lightFill = document.getElementById("lightFill");
   const cancelAddBook = document.getElementById("cancelAddBook");
   const confirmAddBook = document.getElementById("confirmAddBook");
 
@@ -210,15 +215,63 @@
         selectedColor = color;
         [...colorSwatches.children].forEach(c => c.classList.remove("selected"));
         sw.classList.add("selected");
+        setPickerFromHex(color);
       });
       colorSwatches.appendChild(sw);
     });
   }
   buildSwatches();
 
-  customColorInput.addEventListener("input", () => {
-    selectedColor = customColorInput.value;
-    [...colorSwatches.children].forEach(c => c.classList.remove("selected"));
+  // ---------- custom HSL color picker (in-page, no native dialog) ----------
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = v => Math.round(v * 255).toString(16).padStart(2, "0");
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+  }
+
+  function hexToHsl(hex) {
+    const num = parseInt(hex.replace("#", ""), 16);
+    let r = (num >> 16 & 255) / 255, g = (num >> 8 & 255) / 255, b = (num & 255) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; }
+    else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4;
+      }
+      h *= 60;
+    }
+    return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+
+  function updatePickerVisuals() {
+    const h = Number(hueRange.value), s = Number(satRange.value), l = Number(lightRange.value);
+    colorPreview.style.background = hslToHex(h, s, l);
+    satFill.style.background = `linear-gradient(90deg, ${hslToHex(h, 0, l)}, ${hslToHex(h, 100, l)})`;
+    lightFill.style.background = `linear-gradient(90deg, #000, ${hslToHex(h, s, 50)}, #fff)`;
+  }
+
+  function setPickerFromHex(hex) {
+    const { h, s, l } = hexToHsl(hex);
+    hueRange.value = h;
+    satRange.value = s;
+    lightRange.value = l;
+    updatePickerVisuals();
+  }
+
+  [hueRange, satRange, lightRange].forEach(range => {
+    range.addEventListener("input", () => {
+      selectedColor = hslToHex(Number(hueRange.value), Number(satRange.value), Number(lightRange.value));
+      updatePickerVisuals();
+      [...colorSwatches.children].forEach(c => c.classList.remove("selected"));
+    });
   });
 
   function openAddBookModal(shelfId) {
@@ -226,6 +279,7 @@
     bookTitleInput.value = "";
     selectedColor = PALETTE[0];
     [...colorSwatches.children].forEach((c, i) => c.classList.toggle("selected", i === 0));
+    setPickerFromHex(PALETTE[0]);
     addBookModal.classList.remove("hidden");
     setTimeout(() => bookTitleInput.focus(), 50);
   }

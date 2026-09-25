@@ -351,13 +351,84 @@ body {
 .swatch:hover { transform: scale(1.12); }
 .swatch.selected { border: 3px solid #4a3316; box-shadow: 0 0 0 2px #d9b568; }
 
-#customColorInput {
-  margin-top: 4px;
-  width: 60px;
-  height: 32px;
-  border: none;
-  background: none;
+.custom-picker {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(94, 59, 28, 0.06);
+  border-radius: 10px;
+}
+.custom-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.custom-picker-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5a4020;
+}
+.color-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.2);
+  box-shadow: inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.25);
+}
+
+.range-wrap {
+  position: relative;
+  height: 26px;
+  border-radius: 13px;
+  margin-bottom: 10px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+.range-wrap:last-child { margin-bottom: 0; }
+.range-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 13px;
+}
+.hue-fill {
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.range-wrap input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
   cursor: pointer;
+}
+.range-wrap input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 100%;
+}
+.range-wrap input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 0;
+  border-radius: 50%;
+  background: #fffdf8;
+  border: 2px solid rgba(0,0,0,0.4);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.range-wrap input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 100%;
+  border: none;
+}
+.range-wrap input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fffdf8;
+  border: 2px solid rgba(0,0,0,0.4);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
 .modal-actions {
