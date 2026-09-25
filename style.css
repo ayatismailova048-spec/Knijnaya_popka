@@ -1,0 +1,588 @@
+:root {
+  --wall1: #d8c7ad;
+  --wall2: #cbb896;
+  --wood-light: #a9713f;
+  --wood-mid: #8a5a30;
+  --wood-dark: #5e3b1c;
+  --gold: #d9b568;
+  --paper: #f6ecd9;
+  --paper-dark: #e9dbc0;
+  --ink: #3b2f22;
+  --shadow: rgba(30, 18, 6, 0.45);
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--wall1);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+body {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 40px),
+    linear-gradient(180deg, var(--wall1) 0%, var(--wall2) 100%);
+  min-height: 100vh;
+}
+
+/* ============ TOPBAR ============ */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 36px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0));
+  border-bottom: 3px solid rgba(94, 59, 28, 0.25);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(4px);
+}
+
+.topbar h1 {
+  font-family: "Merriweather", serif;
+  font-weight: 900;
+  font-size: 28px;
+  margin: 0;
+  color: #4a3316;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+}
+
+.btn {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  letter-spacing: .3px;
+}
+.btn:active { transform: translateY(1px) scale(0.98); }
+
+.btn-primary {
+  background: linear-gradient(180deg, #b9793f, #8a5a30);
+  color: #fff6e6;
+  box-shadow: 0 3px 0 #5e3b1c, 0 6px 10px rgba(0,0,0,0.25);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.btn-ghost {
+  background: rgba(255,255,255,0.5);
+  color: #4a3316;
+  box-shadow: inset 0 0 0 1.5px rgba(94,59,28,0.35);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.8); }
+
+.btn-danger {
+  background: linear-gradient(180deg, #b3452f, #832c1c);
+  color: #fff0ea;
+  box-shadow: 0 3px 0 #5c1d11, 0 6px 10px rgba(0,0,0,0.25);
+}
+
+.btn-sm { font-size: 14px; padding: 6px 12px; }
+
+.btn-nav {
+  background: linear-gradient(180deg, #6b4726, #4a3016);
+  color: #f3e6cc;
+  padding: 10px 22px;
+  box-shadow: 0 3px 0 #2f1d0c, 0 6px 10px rgba(0,0,0,0.35);
+}
+.btn-nav:disabled { opacity: 0.35; cursor: default; }
+.btn-nav:hover:not(:disabled) { filter: brightness(1.12); }
+
+/* ============ ROOM / SHELVES ============ */
+.room {
+  padding: 30px 40px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 46px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.shelf-unit {
+  position: relative;
+}
+
+.shelf-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.shelf-name {
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: #4a3316;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed transparent;
+  padding: 2px 4px;
+  min-width: 60px;
+}
+.shelf-name:hover, .shelf-name:focus {
+  border-bottom: 1.5px dashed rgba(94,59,28,0.4);
+  outline: none;
+}
+
+.shelf-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #7a5a34;
+  opacity: 0.55;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.shelf-icon-btn:hover { opacity: 1; background: rgba(255,255,255,0.5); }
+
+.shelf-board-wrap {
+  position: relative;
+  padding: 0 18px;
+}
+
+/* the wooden case surrounding books: back panel + side posts */
+.shelf-case {
+  position: relative;
+  min-height: 190px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.18)),
+    repeating-linear-gradient(100deg, rgba(0,0,0,0.05) 0 3px, transparent 3px 26px),
+    linear-gradient(160deg, var(--wood-mid), var(--wood-dark) 90%);
+  border: 10px solid;
+  border-image: linear-gradient(180deg, var(--wood-light), var(--wood-dark)) 1;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 8px 18px rgba(0,0,0,0.35),
+    0 18px 26px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: flex-end;
+  padding: 16px 16px 0;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* the shelf board itself (bottom plank the books rest on) */
+.shelf-board {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  bottom: 14px;
+  height: 16px;
+  background: linear-gradient(180deg, #b98449, #7a4d24 70%, #5c3a1c);
+  box-shadow: 0 6px 10px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.15);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.books-row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding-bottom: 14px;
+  min-height: 168px;
+  flex: 1;
+  z-index: 2;
+}
+
+.add-book-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 150px;
+  margin-bottom: 14px;
+  border: 2px dashed rgba(255,255,255,0.35);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.6);
+  font-size: 26px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  flex-shrink: 0;
+  transition: background .15s, color .15s, transform .15s;
+}
+.add-book-slot:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  transform: translateY(-3px);
+}
+
+/* ============ BOOK SPINE ============ */
+.book {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 3px 5px 5px 3px;
+  cursor: pointer;
+  transform-origin: bottom center;
+  transition: transform .18s ease, box-shadow .18s ease;
+  box-shadow: 1px 4px 8px rgba(0,0,0,0.5), inset -3px 0 6px rgba(0,0,0,0.25), inset 3px 0 4px rgba(255,255,255,0.18);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 10px;
+  overflow: hidden;
+}
+.book:hover {
+  transform: translateY(-14px) rotate(-1deg);
+  box-shadow: 2px 10px 16px rgba(0,0,0,0.5), inset -3px 0 6px rgba(0,0,0,0.25), inset 3px 0 4px rgba(255,255,255,0.18);
+}
+.book::before {
+  /* embossed horizontal bands near top and bottom like a hardcover spine */
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px; top: 10px; height: 3px;
+  background: rgba(255, 230, 180, 0.35);
+  border-radius: 2px;
+  box-shadow: 0 5px 0 rgba(255,230,180,0.2), 0 86px 0 rgba(255,230,180,0.2), 0 91px 0 rgba(255,230,180,0.35);
+}
+.book-title-vert {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  color: var(--gold);
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  max-height: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.book-remove {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 18px; height: 18px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity .15s;
+  cursor: pointer;
+  z-index: 5;
+}
+.book:hover .book-remove { opacity: 0.85; }
+.book-remove:hover { opacity: 1 !important; background: rgba(180,40,30,0.85); }
+
+/* ============ MODALS ============ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 12, 4, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  animation: fadeIn .18s ease;
+}
+.modal-overlay.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: linear-gradient(180deg, #fbf3e2, #f1e4c8);
+  border-radius: 14px;
+  padding: 28px 30px;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  border: 1px solid rgba(94,59,28,0.25);
+  animation: pop .18s ease;
+}
+@keyframes pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.modal h2 {
+  margin: 0 0 18px;
+  font-family: "Merriweather", serif;
+  color: #4a3316;
+  font-size: 21px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 18px;
+}
+.field span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #5a4020;
+  font-size: 15px;
+}
+.field input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 17px;
+  font-family: "Cormorant Garamond", serif;
+  border: 1.5px solid rgba(94,59,28,0.3);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #3b2f22;
+}
+.field input[type="text"]:focus { outline: 2px solid #b9793f; }
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.swatch {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(0,0,0,0.15);
+  box-shadow: inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.25);
+  transition: transform .1s;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch.selected { border: 3px solid #4a3316; box-shadow: 0 0 0 2px #d9b568; }
+
+#customColorInput {
+  margin-top: 4px;
+  width: 60px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ============ READER ============ */
+.reader {
+  position: fixed; inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.reader.hidden { display: none; }
+.reader-backdrop {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, #2a1c10 0%, #0f0904 100%);
+}
+
+.reader-close {
+  position: absolute;
+  top: 18px; right: 26px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: #f3e6cc;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 5;
+}
+.reader-close:hover { background: rgba(255,255,255,0.25); }
+
+.reader-toolbar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  color: #f3e6cc;
+}
+.reader-title {
+  font-family: "Merriweather", serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.book-stage {
+  position: relative;
+  z-index: 3;
+  perspective: 2600px;
+  width: min(92vw, 640px);
+  height: min(60vh, 520px);
+}
+
+.book {
+  /* reused .book class name collision avoided by scoping selectors below */
+}
+
+#book.book {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: block;
+  padding: 0;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+#book.book:hover { transform: none; box-shadow: none; }
+
+.book-spine-side {
+  position: absolute;
+  left: -14px;
+  top: 3%;
+  width: 22px;
+  height: 94%;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, rgba(0,0,0,0.5), var(--spine-color, #6b3a2a) 40%, var(--spine-color, #6b3a2a));
+  box-shadow: inset 3px 0 6px rgba(0,0,0,0.4), -4px 6px 16px rgba(0,0,0,0.5);
+}
+
+.page-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--paper);
+  border-radius: 4px 10px 10px 4px;
+  box-shadow:
+    0 2px 0 var(--paper-dark),
+    0 25px 45px rgba(0,0,0,0.55),
+    inset -40px 0 50px -42px rgba(0,0,0,0.28);
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,0.08) 0%, transparent 2%),
+    repeating-linear-gradient(0deg, transparent 0 34px, rgba(90,70,40,0.08) 34px 35px);
+  padding: 30px 26px 40px 34px;
+  transform-style: preserve-3d;
+  overflow: hidden;
+}
+
+.page-editable {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  border: none;
+  resize: none;
+  background: transparent;
+  font-family: "Caveat", "Cormorant Garamond", cursive;
+  font-size: 22px;
+  line-height: 35px;
+  color: #33261a;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  padding: 0;
+}
+.page-editable::placeholder {
+  color: rgba(60, 45, 25, 0.4);
+  font-style: italic;
+}
+
+.page-number {
+  position: absolute;
+  bottom: 10px;
+  right: 22px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 13px;
+  color: rgba(60,45,25,0.55);
+}
+#pageContentLeft { display: none; }
+
+.page-corner {
+  position: absolute;
+  bottom: 0;
+  width: 46px;
+  height: 46px;
+  cursor: pointer;
+  z-index: 6;
+  opacity: 0;
+}
+.page-corner-next { right: 0; background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.12) 51%); }
+.page-corner-prev { left: 0; background: linear-gradient(45deg, transparent 50%, rgba(0,0,0,0.12) 51%); }
+.page-corner:hover { opacity: 1; }
+
+/* the flipping page overlay */
+.flip-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  perspective: 2600px;
+}
+.flip-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  border-radius: 4px 10px 10px 4px;
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background: var(--paper);
+  padding: 30px 26px 40px 34px;
+  font-family: "Caveat", "Cormorant Garamond", cursive;
+  font-size: 22px;
+  line-height: 35px;
+  color: #33261a;
+  white-space: pre-wrap;
+  overflow: hidden;
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: 0 2px 0 var(--paper-dark);
+  background-image: repeating-linear-gradient(0deg, transparent 0 34px, rgba(90,70,40,0.08) 34px 35px);
+}
+.flip-face.back {
+  transform: rotateY(180deg);
+}
+.flip-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.35), transparent 40%);
+  opacity: 0;
+  border-radius: 4px 10px 10px 4px;
+  pointer-events: none;
+}
+
+.reader-nav {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 16px;
+  color: #f3e6cc;
+}
+.page-indicator {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 16px;
+  min-width: 90px;
+  text-align: center;
+}
+
+/* scrollbar styling for editable page */
+.page-editable::-webkit-scrollbar { width: 7px; }
+.page-editable::-webkit-scrollbar-thumb { background: rgba(90,70,40,0.3); border-radius: 4px; }
+
+@media (max-width: 640px) {
+  .topbar { padding: 16px 18px; }
+  .topbar h1 { font-size: 21px; }
+  .room { padding: 20px 14px 60px; }
+  .book-stage { width: 94vw; height: 66vh; }
+  .page-area, .flip-face { padding: 22px 16px 34px 26px; }
+}

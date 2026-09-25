@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Книжная полка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>📚 Книжная полка</h1>
+  <button id="addShelfBtn" class="btn btn-primary">+ Добавить полку</button>
+</header>
+
+<main id="room" class="room"></main>
+
+<!-- ===== Модалка: добавить книгу ===== -->
+<div id="addBookModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Новая книга</h2>
+    <label class="field">
+      <span>Название книги</span>
+      <input id="bookTitleInput" type="text" maxlength="40" placeholder="Например, «Мастер и Маргарита»">
+    </label>
+    <label class="field">
+      <span>Цвет обложки</span>
+      <div class="swatches" id="colorSwatches"></div>
+      <input id="customColorInput" type="color" value="#8b2f2f">
+    </label>
+    <div class="modal-actions">
+      <button id="cancelAddBook" class="btn btn-ghost">Отмена</button>
+      <button id="confirmAddBook" class="btn btn-primary">Поставить на полку</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Модалка: подтверждение удаления ===== -->
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="confirmText">Удалить?</h2>
+    <div class="modal-actions">
+      <button id="confirmNo" class="btn btn-ghost">Отмена</button>
+      <button id="confirmYes" class="btn btn-danger">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Ридер книги ===== -->
+<div id="reader" class="reader hidden">
+  <div class="reader-backdrop"></div>
+  <button id="closeReader" class="reader-close" title="Закрыть книгу">×</button>
+  <div class="reader-toolbar">
+    <span id="readerTitle" class="reader-title"></span>
+    <button id="addPageBtn" class="btn btn-ghost btn-sm">+ Новая страница</button>
+    <button id="deletePageBtn" class="btn btn-ghost btn-sm">Удалить страницу</button>
+  </div>
+
+  <div class="book-stage">
+    <div id="book" class="book">
+      <div class="book-spine-side" id="bookSpineSide"></div>
+      <div class="page-area" id="pageArea">
+        <div class="page-content" id="pageContentLeft">
+          <div class="page-number" id="pageNumberLeft"></div>
+        </div>
+        <textarea class="page-editable" id="pageEditable" spellcheck="false" placeholder="Пишите здесь свою историю…"></textarea>
+        <div id="flipLayer" class="flip-layer"></div>
+        <div class="page-corner page-corner-next" id="cornerNext" title="Следующая страница"></div>
+        <div class="page-corner page-corner-prev" id="cornerPrev" title="Предыдущая страница"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reader-nav">
+    <button id="prevPageBtn" class="btn btn-nav">‹ Пред. страница</button>
+    <span id="pageIndicator" class="page-indicator"></span>
+    <button id="nextPageBtn" class="btn btn-nav">След. страница ›</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
