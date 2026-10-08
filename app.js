@@ -654,15 +654,26 @@
 
     if (dragState.mode === "peel") {
       const r = dragState.areaRect;
-      const P = { x: clamp(clientX - r.left, 0, dragState.W), y: clamp(clientY - r.top, 0, dragState.H) };
-      const dx = Math.abs(P.x - dragState.C.x);
+      const rawP = { x: clamp(clientX - r.left, 0, dragState.W), y: clamp(clientY - r.top, 0, dragState.H) };
+      const dx = Math.abs(rawP.x - dragState.C.x);
       dragState.progress = clamp(dx / (dragState.W * 0.85), 0, 1);
 
-      if (Math.hypot(P.x - dragState.C.x, P.y - dragState.C.y) < 6) {
+      const dist = Math.hypot(rawP.x - dragState.C.x, rawP.y - dragState.C.y);
+      if (dist < 6) {
         dragState.flap.style.clipPath = pointsToPolygon([dragState.C, dragState.C, dragState.C]);
         pageStatic.style.clipPath = "none";
         return;
       }
+
+      // Cap how big the folded corner itself gets, independent of the (uncapped)
+      // commit progress above — a real dog-ear stays a modest corner curl even
+      // if you keep dragging well past the point where the page would turn.
+      const maxRadius = Math.min(dragState.W, dragState.H) * 0.62;
+      const scale = Math.min(1, maxRadius / dist);
+      const P = {
+        x: dragState.C.x + (rawP.x - dragState.C.x) * scale,
+        y: dragState.C.y + (rawP.y - dragState.C.y) * scale
+      };
 
       const { M, phi, E1, E2 } = computeFold(dragState.caseName, dragState.C, P, dragState.W, dragState.H);
       dragState.flap.style.clipPath = pointsToPolygon([dragState.C, E1, E2]);
