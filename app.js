@@ -665,14 +665,25 @@
         return;
       }
 
-      // Cap how big the folded corner itself gets, independent of the (uncapped)
-      // commit progress above — a real dog-ear stays a modest corner curl even
-      // if you keep dragging well past the point where the page would turn.
+      // Keep the fold at a plausible angle and a modest size, independent of the
+      // (uncapped) commit progress above: a real dog-ear stays a corner curl that
+      // follows your finger loosely, instead of swinging to a near-vertical pull
+      // (which would carve a degenerate sliver out of the whole page) or growing
+      // past the point where it'd still read as "a corner", however far you drag.
+      const idealAngle = dragState.direction === "next" ? Math.PI : 0;
+      let angle = Math.atan2(rawP.y - dragState.C.y, rawP.x - dragState.C.x);
+      let diff = angle - idealAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const maxAngle = Math.PI / 3; // 60°
+      diff = clamp(diff, -maxAngle, maxAngle);
+      angle = idealAngle + diff;
+
       const maxRadius = Math.min(dragState.W, dragState.H) * 0.62;
-      const scale = Math.min(1, maxRadius / dist);
+      const radius = Math.min(dist, maxRadius);
       const P = {
-        x: dragState.C.x + (rawP.x - dragState.C.x) * scale,
-        y: dragState.C.y + (rawP.y - dragState.C.y) * scale
+        x: clamp(dragState.C.x + Math.cos(angle) * radius, 0, dragState.W),
+        y: clamp(dragState.C.y + Math.sin(angle) * radius, 0, dragState.H)
       };
 
       const { M, phi, E1, E2 } = computeFold(dragState.caseName, dragState.C, P, dragState.W, dragState.H);
