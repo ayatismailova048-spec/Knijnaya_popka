@@ -545,17 +545,30 @@
   }
 
   // ---------- flip lock + read/write mode ----------
+  // SVG elements don't reliably reflect the `.hidden` IDL property in every
+  // engine, so toggle the content attribute directly instead.
+  function setSvgHidden(el, hide) {
+    if (hide) el.setAttribute("hidden", ""); else el.removeAttribute("hidden");
+  }
+
+  const lockIconUnlocked = lockFlipBtn.querySelector(".icon-unlocked");
+  const lockIconLocked = lockFlipBtn.querySelector(".icon-locked");
+  const modeIconWrite = modeToggleBtn.querySelector(".icon-write");
+  const modeIconRead = modeToggleBtn.querySelector(".icon-read");
+
   function setFlipLocked(locked) {
     flipLocked = locked;
     pageArea.classList.toggle("flip-locked", locked);
-    lockFlipBtn.textContent = locked ? "🔒" : "🔓";
+    setSvgHidden(lockIconUnlocked, locked);
+    setSvgHidden(lockIconLocked, !locked);
     lockFlipBtn.title = locked ? "Разблокировать перелистывание" : "Заблокировать перелистывание";
   }
   lockFlipBtn.addEventListener("click", () => setFlipLocked(!flipLocked));
 
   function setReadMode(readMode) {
     pageEditable.readOnly = readMode;
-    modeToggleBtn.textContent = readMode ? "🖊" : "👁";
+    setSvgHidden(modeIconWrite, readMode);
+    setSvgHidden(modeIconRead, !readMode);
     modeToggleBtn.title = readMode ? "Режим письма" : "Режим чтения";
   }
   modeToggleBtn.addEventListener("click", () => setReadMode(!pageEditable.readOnly));
