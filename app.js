@@ -65,6 +65,8 @@
 
   const reader = document.getElementById("reader");
   const closeReader = document.getElementById("closeReader");
+  const modeToggleBtn = document.getElementById("modeToggleBtn");
+  const lockFlipBtn = document.getElementById("lockFlipBtn");
   const bookSpineSide = document.getElementById("bookSpineSide");
   const pageArea = document.getElementById("pageArea");
   const pageStatic = document.getElementById("pageStatic");
@@ -81,6 +83,7 @@
   let currentPage = 0;
   let isFlipping = false;
   let dragState = null;
+  let flipLocked = false;
 
   // ---------- rendering ----------
   function render() {
@@ -541,6 +544,22 @@
     }, 180);
   }
 
+  // ---------- flip lock + read/write mode ----------
+  function setFlipLocked(locked) {
+    flipLocked = locked;
+    pageArea.classList.toggle("flip-locked", locked);
+    lockFlipBtn.textContent = locked ? "🔒" : "🔓";
+    lockFlipBtn.title = locked ? "Разблокировать перелистывание" : "Заблокировать перелистывание";
+  }
+  lockFlipBtn.addEventListener("click", () => setFlipLocked(!flipLocked));
+
+  function setReadMode(readMode) {
+    pageEditable.readOnly = readMode;
+    modeToggleBtn.textContent = readMode ? "🖊" : "👁";
+    modeToggleBtn.title = readMode ? "Режим письма" : "Режим чтения";
+  }
+  modeToggleBtn.addEventListener("click", () => setReadMode(!pageEditable.readOnly));
+
   function openReader(shelfId, bookId) {
     currentShelfId = shelfId;
     currentBookId = bookId;
@@ -549,6 +568,8 @@
     currentPage = 0;
     bookSpineSide.style.setProperty("--spine-color", shadeColor(book.color, -10));
     reader.classList.remove("hidden");
+    setFlipLocked(false);
+    setReadMode(false);
     paginateFromIndex(book, 0);
     renderPage();
   }
@@ -938,7 +959,7 @@
 
   function attachCornerDrag(el, direction) {
     el.addEventListener("pointerdown", (e) => {
-      if (isFlipping) return;
+      if (isFlipping || flipLocked) return;
       e.preventDefault();
       const ds = startDrag(direction, e.clientX, e.clientY);
       if (!ds) return;
@@ -965,7 +986,7 @@
   attachCornerDrag(cornerPrev, "prev");
 
   function quickFlip(direction) {
-    if (isFlipping) return;
+    if (isFlipping || flipLocked) return;
     const ds = startDrag(direction, 0, null); // clientY omitted -> middle grab -> plain flip
     if (!ds) return;
     dragState = ds;

@@ -565,6 +565,14 @@ body {
   color: rgba(60, 45, 25, 0.4);
   font-style: italic;
 }
+.page-editable:read-only {
+  cursor: default;
+}
+
+.page-area.flip-locked .page-corner {
+  cursor: default;
+  pointer-events: none;
+}
 
 .printed-page-num {
   position: absolute;
