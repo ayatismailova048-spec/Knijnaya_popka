@@ -69,32 +69,60 @@
 <!-- ===== Ридер книги ===== -->
 <div id="reader" class="reader hidden">
   <div class="reader-backdrop"></div>
-  <button id="closeReader" class="reader-close" title="Закрыть книгу">×</button>
-  <div class="reader-toolbar">
-    <span id="readerTitle" class="reader-title"></span>
-    <button id="addPageBtn" class="btn btn-ghost btn-sm">+ Новая страница</button>
-    <button id="deletePageBtn" class="btn btn-ghost btn-sm">Удалить страницу</button>
+  <div class="reader-controls">
+    <button id="editBookBtn" class="icon-btn" title="Изменить книгу" aria-label="Изменить книгу">✎</button>
+    <button id="closeReader" class="icon-btn" title="Закрыть книгу" aria-label="Закрыть книгу">×</button>
   </div>
 
   <div class="book-stage">
     <div id="book" class="book">
       <div class="book-spine-side" id="bookSpineSide"></div>
       <div class="page-area" id="pageArea">
-        <div class="page-content" id="pageContentLeft">
-          <div class="page-number" id="pageNumberLeft"></div>
-        </div>
         <textarea class="page-editable" id="pageEditable" spellcheck="false" placeholder="Пишите здесь свою историю…"></textarea>
+        <div class="printed-page-num" id="printedPageNum"></div>
         <div id="flipLayer" class="flip-layer"></div>
-        <div class="page-corner page-corner-next" id="cornerNext" title="Следующая страница"></div>
-        <div class="page-corner page-corner-prev" id="cornerPrev" title="Предыдущая страница"></div>
+        <div class="page-corner page-corner-next" id="cornerNext" title="Перелистнуть вперёд"></div>
+        <div class="page-corner page-corner-prev" id="cornerPrev" title="Перелистнуть назад"></div>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="reader-nav">
-    <button id="prevPageBtn" class="btn btn-nav">‹ Пред. страница</button>
-    <span id="pageIndicator" class="page-indicator"></span>
-    <button id="nextPageBtn" class="btn btn-nav">След. страница ›</button>
+<!-- ===== Модалка: изменить книгу ===== -->
+<div id="editBookModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Изменить книгу</h2>
+    <label class="field">
+      <span>Название книги</span>
+      <input id="editTitleInput" type="text" maxlength="40">
+    </label>
+    <label class="field">
+      <span>Цвет обложки</span>
+      <div class="swatches" id="editColorSwatches"></div>
+
+      <div class="custom-picker">
+        <div class="custom-picker-head">
+          <span class="custom-picker-label">Свой оттенок</span>
+          <div class="color-preview" id="editColorPreview"></div>
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill hue-fill"></div>
+          <input type="range" id="editHueRange" min="0" max="360" value="350" aria-label="Оттенок">
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill" id="editSatFill"></div>
+          <input type="range" id="editSatRange" min="0" max="100" value="45" aria-label="Насыщенность">
+        </div>
+        <div class="range-wrap">
+          <div class="range-fill" id="editLightFill"></div>
+          <input type="range" id="editLightRange" min="0" max="100" value="32" aria-label="Яркость">
+        </div>
+      </div>
+    </label>
+    <div class="modal-actions">
+      <button id="cancelEditBook" class="btn btn-ghost">Отмена</button>
+      <button id="confirmEditBook" class="btn btn-primary">Сохранить</button>
+    </div>
   </div>
 </div>
 
