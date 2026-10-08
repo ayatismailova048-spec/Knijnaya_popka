@@ -451,6 +451,96 @@
     return shelf.books.find(b => b.id === currentBookId) || null;
   }
 
+  // ---------- auto-pagination: overflowing text flows onto later pages ----------
+  // A hidden clone of the page box, kept off-screen, used only to ask "would
+  // this much text fit on one page" via the browser's own text layout —
+  // matches the real page's font, padding and responsive size exactly because
+  // it's built from the same CSS classes.
+  const measureStage = document.createElement("div");
+  measureStage.className = "book-stage";
+  measureStage.style.cssText = "position:fixed; left:-9999px; top:0; visibility:hidden; pointer-events:none;";
+  const measureBookEl = document.createElement("div");
+  measureBookEl.style.cssText = "width:100%; height:100%; position:relative; display:block; padding:0;";
+  const measurePageArea = document.createElement("div");
+  measurePageArea.className = "page-area";
+  measurePageArea.style.cssText = "position:relative; width:100%; height:100%;";
+  const measurePageStatic = document.createElement("div");
+  measurePageStatic.className = "page-static";
+  const measureTextarea = document.createElement("textarea");
+  measureTextarea.className = "page-editable";
+  measureTextarea.tabIndex = -1;
+  measureTextarea.setAttribute("aria-hidden", "true");
+  measurePageStatic.appendChild(measureTextarea);
+  measurePageArea.appendChild(measurePageStatic);
+  measureBookEl.appendChild(measurePageArea);
+  measureStage.appendChild(measureBookEl);
+  document.body.appendChild(measureStage);
+
+  function fitsOnPage(text) {
+    measureTextarea.value = text;
+    return measureTextarea.scrollHeight <= measureTextarea.clientHeight + 1;
+  }
+
+  // Largest prefix of `text` that fits on one page, broken at a word boundary
+  // where possible, plus whatever is left over for the next page.
+  function splitForPage(text) {
+    if (fitsOnPage(text)) return { chunk: text, rest: "" };
+    let lo = 0, hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (fitsOnPage(text.slice(0, mid))) lo = mid; else hi = mid - 1;
+    }
+    let splitAt = lo;
+    if (splitAt < text.length) {
+      let i = splitAt;
+      while (i > 0 && !/\s/.test(text[i - 1])) i--;
+      if (i > 0) splitAt = i;
+    }
+    if (splitAt <= 0) splitAt = 1; // always make progress, even on one giant unbroken word
+    return { chunk: text.slice(0, splitAt), rest: text.slice(splitAt) };
+  }
+
+  // Re-flows the book's text from `fromIndex` onward across as many pages as
+  // it takes: pulls trailing pages' text forward to fill gaps left by edits,
+  // and pushes overflow from a page into the next (creating new pages as
+  // needed), so a page never needs its own internal scrollbar to read it all.
+  function paginateFromIndex(book, fromIndex) {
+    const before = book.pages.slice(fromIndex);
+    let remaining = before.join("");
+    const after = [];
+    while (remaining.length > 0) {
+      const { chunk, rest } = splitForPage(remaining);
+      after.push(chunk);
+      remaining = rest;
+    }
+    if (after.length === 0) after.push("");
+    const changed = before.length !== after.length || before.some((p, i) => p !== after[i]);
+    if (changed) {
+      book.pages = book.pages.slice(0, fromIndex).concat(after);
+      saveState();
+    }
+    return changed;
+  }
+
+  let paginateTimer = null;
+  function schedulePagination() {
+    clearTimeout(paginateTimer);
+    paginateTimer = setTimeout(() => {
+      const book = getCurrentBook();
+      if (!book) return;
+      const changed = paginateFromIndex(book, currentPage);
+      if (changed) {
+        const newText = book.pages[currentPage] || "";
+        if (pageEditable.value !== newText) {
+          const atEnd = pageEditable.selectionStart === pageEditable.value.length;
+          pageEditable.value = newText;
+          if (atEnd) { const p = newText.length; pageEditable.setSelectionRange(p, p); }
+        }
+        printedPageNum.textContent = `— ${currentPage + 1} —`;
+      }
+    }, 180);
+  }
+
   function openReader(shelfId, bookId) {
     currentShelfId = shelfId;
     currentBookId = bookId;
@@ -459,11 +549,13 @@
     currentPage = 0;
     bookSpineSide.style.setProperty("--spine-color", shadeColor(book.color, -10));
     reader.classList.remove("hidden");
+    paginateFromIndex(book, 0);
     renderPage();
   }
 
   function closeReaderFn() {
     saveCurrentPageText();
+    clearTimeout(paginateTimer);
     reader.classList.add("hidden");
     render();
   }
@@ -480,6 +572,7 @@
     const book = getCurrentBook();
     if (!book) return;
     book.pages[currentPage] = pageEditable.value;
+    schedulePagination();
   });
 
   function renderPage() {
