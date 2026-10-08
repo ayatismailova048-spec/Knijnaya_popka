@@ -48,14 +48,15 @@
   const addBookModal = document.getElementById("addBookModal");
   const bookTitleInput = document.getElementById("bookTitleInput");
   const colorSwatches = document.getElementById("colorSwatches");
-  const hueRange = document.getElementById("hueRange");
-  const satRange = document.getElementById("satRange");
-  const lightRange = document.getElementById("lightRange");
-  const colorPreview = document.getElementById("colorPreview");
-  const satFill = document.getElementById("satFill");
-  const lightFill = document.getElementById("lightFill");
   const cancelAddBook = document.getElementById("cancelAddBook");
   const confirmAddBook = document.getElementById("confirmAddBook");
+
+  const editBookModal = document.getElementById("editBookModal");
+  const editTitleInput = document.getElementById("editTitleInput");
+  const editColorSwatches = document.getElementById("editColorSwatches");
+  const cancelEditBook = document.getElementById("cancelEditBook");
+  const confirmEditBook = document.getElementById("confirmEditBook");
+  const editBookBtn = document.getElementById("editBookBtn");
 
   const confirmModal = document.getElementById("confirmModal");
   const confirmText = document.getElementById("confirmText");
@@ -64,24 +65,21 @@
 
   const reader = document.getElementById("reader");
   const closeReader = document.getElementById("closeReader");
-  const readerTitle = document.getElementById("readerTitle");
-  const addPageBtn = document.getElementById("addPageBtn");
-  const deletePageBtn = document.getElementById("deletePageBtn");
   const bookSpineSide = document.getElementById("bookSpineSide");
   const pageArea = document.getElementById("pageArea");
   const pageEditable = document.getElementById("pageEditable");
+  const printedPageNum = document.getElementById("printedPageNum");
   const flipLayer = document.getElementById("flipLayer");
   const cornerNext = document.getElementById("cornerNext");
   const cornerPrev = document.getElementById("cornerPrev");
-  const prevPageBtn = document.getElementById("prevPageBtn");
-  const nextPageBtn = document.getElementById("nextPageBtn");
-  const pageIndicator = document.getElementById("pageIndicator");
 
   let selectedColor = PALETTE[0];
+  let editSelectedColor = PALETTE[0];
   let currentBookId = null;
   let currentShelfId = null;
   let currentPage = 0;
   let isFlipping = false;
+  let dragState = null;
 
   // ---------- rendering ----------
   function render() {
@@ -204,24 +202,6 @@
     render();
   });
 
-  // ---------- add book modal ----------
-  function buildSwatches() {
-    colorSwatches.innerHTML = "";
-    PALETTE.forEach((color, i) => {
-      const sw = document.createElement("div");
-      sw.className = "swatch" + (i === 0 ? " selected" : "");
-      sw.style.background = color;
-      sw.addEventListener("click", () => {
-        selectedColor = color;
-        [...colorSwatches.children].forEach(c => c.classList.remove("selected"));
-        sw.classList.add("selected");
-        setPickerFromHex(color);
-      });
-      colorSwatches.appendChild(sw);
-    });
-  }
-  buildSwatches();
-
   // ---------- custom HSL color picker (in-page, no native dialog) ----------
   function hslToHex(h, s, l) {
     s /= 100; l /= 100;
@@ -251,35 +231,83 @@
     return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
   }
 
-  function updatePickerVisuals() {
-    const h = Number(hueRange.value), s = Number(satRange.value), l = Number(lightRange.value);
-    colorPreview.style.background = hslToHex(h, s, l);
-    satFill.style.background = `linear-gradient(90deg, ${hslToHex(h, 0, l)}, ${hslToHex(h, 100, l)})`;
-    lightFill.style.background = `linear-gradient(90deg, #000, ${hslToHex(h, s, 50)}, #fff)`;
-  }
-
-  function setPickerFromHex(hex) {
-    const { h, s, l } = hexToHsl(hex);
-    hueRange.value = h;
-    satRange.value = s;
-    lightRange.value = l;
-    updatePickerVisuals();
-  }
-
-  [hueRange, satRange, lightRange].forEach(range => {
-    range.addEventListener("input", () => {
-      selectedColor = hslToHex(Number(hueRange.value), Number(satRange.value), Number(lightRange.value));
-      updatePickerVisuals();
-      [...colorSwatches.children].forEach(c => c.classList.remove("selected"));
+  function buildSwatchesInto(container, onPick) {
+    container.innerHTML = "";
+    PALETTE.forEach((color, i) => {
+      const sw = document.createElement("div");
+      sw.className = "swatch" + (i === 0 ? " selected" : "");
+      sw.style.background = color;
+      sw.addEventListener("click", () => {
+        [...container.children].forEach(c => c.classList.remove("selected"));
+        sw.classList.add("selected");
+        onPick(color);
+      });
+      container.appendChild(sw);
     });
+  }
+
+  function createColorPicker({ hueEl, satEl, lightEl, previewEl, satFillEl, lightFillEl, swatchesEl, onChange }) {
+    function update() {
+      const h = Number(hueEl.value), s = Number(satEl.value), l = Number(lightEl.value);
+      const hex = hslToHex(h, s, l);
+      previewEl.style.background = hex;
+      satFillEl.style.background = `linear-gradient(90deg, ${hslToHex(h, 0, l)}, ${hslToHex(h, 100, l)})`;
+      lightFillEl.style.background = `linear-gradient(90deg, #000, ${hslToHex(h, s, 50)}, #fff)`;
+      onChange(hex);
+    }
+    [hueEl, satEl, lightEl].forEach(el => {
+      el.addEventListener("input", () => {
+        if (swatchesEl) [...swatchesEl.children].forEach(c => c.classList.remove("selected"));
+        update();
+      });
+    });
+    function setFromHex(hex) {
+      const { h, s, l } = hexToHsl(hex);
+      hueEl.value = h;
+      satEl.value = s;
+      lightEl.value = l;
+      update();
+    }
+    return { setFromHex };
+  }
+
+  const addPicker = createColorPicker({
+    hueEl: document.getElementById("hueRange"),
+    satEl: document.getElementById("satRange"),
+    lightEl: document.getElementById("lightRange"),
+    previewEl: document.getElementById("colorPreview"),
+    satFillEl: document.getElementById("satFill"),
+    lightFillEl: document.getElementById("lightFill"),
+    swatchesEl: colorSwatches,
+    onChange: hex => { selectedColor = hex; }
+  });
+  buildSwatchesInto(colorSwatches, color => {
+    selectedColor = color;
+    addPicker.setFromHex(color);
   });
 
+  const editPicker = createColorPicker({
+    hueEl: document.getElementById("editHueRange"),
+    satEl: document.getElementById("editSatRange"),
+    lightEl: document.getElementById("editLightRange"),
+    previewEl: document.getElementById("editColorPreview"),
+    satFillEl: document.getElementById("editSatFill"),
+    lightFillEl: document.getElementById("editLightFill"),
+    swatchesEl: editColorSwatches,
+    onChange: hex => { editSelectedColor = hex; }
+  });
+  buildSwatchesInto(editColorSwatches, color => {
+    editSelectedColor = color;
+    editPicker.setFromHex(color);
+  });
+
+  // ---------- add book modal ----------
   function openAddBookModal(shelfId) {
     pendingShelfIdForNewBook = shelfId;
     bookTitleInput.value = "";
     selectedColor = PALETTE[0];
     [...colorSwatches.children].forEach((c, i) => c.classList.toggle("selected", i === 0));
-    setPickerFromHex(PALETTE[0]);
+    addPicker.setFromHex(PALETTE[0]);
     addBookModal.classList.remove("hidden");
     setTimeout(() => bookTitleInput.focus(), 50);
   }
@@ -299,6 +327,39 @@
 
   bookTitleInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") confirmAddBook.click();
+  });
+
+  // ---------- edit book modal ----------
+  function openEditBookModal() {
+    const book = getCurrentBook();
+    if (!book) return;
+    editTitleInput.value = book.title;
+    editSelectedColor = book.color;
+    const matchIndex = PALETTE.indexOf(book.color);
+    [...editColorSwatches.children].forEach((c, i) => c.classList.toggle("selected", i === matchIndex));
+    editPicker.setFromHex(book.color);
+    editBookModal.classList.remove("hidden");
+    setTimeout(() => editTitleInput.focus(), 50);
+  }
+
+  editBookBtn.addEventListener("click", openEditBookModal);
+  cancelEditBook.addEventListener("click", () => editBookModal.classList.add("hidden"));
+  editBookModal.addEventListener("click", (e) => { if (e.target === editBookModal) editBookModal.classList.add("hidden"); });
+
+  confirmEditBook.addEventListener("click", () => {
+    const book = getCurrentBook();
+    if (!book) return;
+    const title = editTitleInput.value.trim();
+    if (!title) { editTitleInput.focus(); return; }
+    book.title = title;
+    book.color = editSelectedColor;
+    saveState();
+    bookSpineSide.style.setProperty("--spine-color", shadeColor(book.color, -10));
+    editBookModal.classList.add("hidden");
+  });
+
+  editTitleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") confirmEditBook.click();
   });
 
   // ---------- confirm modal ----------
@@ -395,7 +456,6 @@
     const book = getCurrentBook();
     if (!book) return;
     currentPage = 0;
-    readerTitle.textContent = book.title;
     bookSpineSide.style.setProperty("--spine-color", shadeColor(book.color, -10));
     reader.classList.remove("hidden");
     renderPage();
@@ -425,9 +485,7 @@
     const book = getCurrentBook();
     if (!book) return;
     pageEditable.value = book.pages[currentPage] || "";
-    pageIndicator.textContent = `Стр. ${currentPage + 1} из ${book.pages.length}`;
-    prevPageBtn.disabled = currentPage === 0 || isFlipping;
-    nextPageBtn.disabled = currentPage >= book.pages.length - 1 || isFlipping;
+    printedPageNum.textContent = `— ${currentPage + 1} —`;
     pageEditable.style.opacity = "1";
   }
 
@@ -438,111 +496,155 @@
     return face;
   }
 
-  function flip(direction) {
+  // Remove a trailing blank page left behind by flipping forward and back
+  // without writing anything on it, so empty pages don't pile up.
+  function trimTrailingEmpty(leftIndex) {
     const book = getCurrentBook();
-    if (!book || isFlipping) return;
+    if (!book) return;
+    if (
+      leftIndex === book.pages.length - 1 &&
+      book.pages.length > 1 &&
+      (book.pages[leftIndex] || "") === ""
+    ) {
+      book.pages.splice(leftIndex, 1);
+      saveState();
+    }
+  }
+
+  function startDrag(direction, clientX) {
+    const book = getCurrentBook();
+    if (!book || isFlipping) return null;
     const targetPage = direction === "next" ? currentPage + 1 : currentPage - 1;
-    if (targetPage < 0 || targetPage >= book.pages.length) return;
+    if (direction === "prev" && targetPage < 0) return null;
+    const isNew = direction === "next" && targetPage >= book.pages.length;
 
     saveCurrentPageText();
     isFlipping = true;
-    prevPageBtn.disabled = true;
-    nextPageBtn.disabled = true;
 
-    playPageFlipSound();
+    const currentText = book.pages[currentPage] || "";
+    const targetText = isNew ? "" : (book.pages[targetPage] || "");
 
     const flipPage = document.createElement("div");
     flipPage.className = "flip-page";
-
-    const currentText = book.pages[currentPage] || "";
-    const targetText = book.pages[targetPage] || "";
-
     const shade = document.createElement("div");
     shade.className = "flip-shade";
 
+    let front, back, startDeg, endDeg;
     if (direction === "next") {
-      const front = buildFlipFace(currentText);
-      const back = buildFlipFace(targetText, "back");
-      flipPage.appendChild(front);
-      flipPage.appendChild(back);
-      flipPage.appendChild(shade);
-      flipPage.style.transform = "rotateY(0deg)";
-      pageEditable.style.opacity = "0";
-      flipLayer.appendChild(flipPage);
-      // force reflow then animate
-      void flipPage.offsetWidth;
-      flipPage.style.transition = "transform 0.62s cubic-bezier(.4,.1,.2,1)";
-      shade.style.transition = "opacity 0.62s ease";
-      requestAnimationFrame(() => {
-        flipPage.style.transform = "rotateY(-180deg)";
-        shade.style.opacity = "1";
-        setTimeout(() => { shade.style.opacity = "0"; }, 310);
-      });
+      front = buildFlipFace(currentText);
+      back = buildFlipFace(targetText, "back");
+      startDeg = 0; endDeg = -180;
     } else {
-      const front = buildFlipFace(targetText);
-      const back = buildFlipFace(currentText, "back");
-      flipPage.appendChild(front);
-      flipPage.appendChild(back);
-      flipPage.appendChild(shade);
-      flipPage.style.transform = "rotateY(-180deg)";
-      pageEditable.style.opacity = "0";
-      flipLayer.appendChild(flipPage);
-      void flipPage.offsetWidth;
-      flipPage.style.transition = "transform 0.62s cubic-bezier(.4,.1,.2,1)";
-      shade.style.transition = "opacity 0.62s ease";
-      requestAnimationFrame(() => {
-        flipPage.style.transform = "rotateY(0deg)";
-        shade.style.opacity = "1";
-        setTimeout(() => { shade.style.opacity = "0"; }, 310);
-      });
+      front = buildFlipFace(targetText);
+      back = buildFlipFace(currentText, "back");
+      startDeg = -180; endDeg = 0;
     }
+    flipPage.appendChild(front);
+    flipPage.appendChild(back);
+    flipPage.appendChild(shade);
+    flipPage.style.transform = `rotateY(${startDeg}deg)`;
+    pageEditable.style.opacity = "0";
+    flipLayer.appendChild(flipPage);
+    void flipPage.offsetWidth;
 
-    setTimeout(() => {
-      flipPage.remove();
-      currentPage = targetPage;
-      isFlipping = false;
-      renderPage();
-    }, 640);
+    return {
+      direction, targetPage, isNew, flipPage, shade,
+      startX: clientX, startDeg, endDeg,
+      width: Math.max(1, pageArea.getBoundingClientRect().width),
+      progress: 0, moved: false
+    };
   }
 
-  cornerNext.addEventListener("click", () => flip("next"));
-  cornerPrev.addEventListener("click", () => flip("prev"));
-  nextPageBtn.addEventListener("click", () => flip("next"));
-  prevPageBtn.addEventListener("click", () => flip("prev"));
+  function updateDrag(clientX) {
+    if (!dragState) return;
+    const dx = clientX - dragState.startX;
+    const dir = dragState.direction === "next" ? -1 : 1;
+    const raw = (dx * dir) / (dragState.width * 0.85);
+    const progress = Math.max(0, Math.min(1, raw));
+    dragState.progress = progress;
+    const deg = dragState.startDeg + (dragState.endDeg - dragState.startDeg) * progress;
+    dragState.flipPage.style.transform = `rotateY(${deg}deg)`;
+    dragState.shade.style.opacity = String(Math.sin(progress * Math.PI) * 0.9);
+  }
 
-  addPageBtn.addEventListener("click", () => {
+  function endDrag() {
+    if (!dragState) return;
+    const ds = dragState;
+    dragState = null;
     const book = getCurrentBook();
-    if (!book || isFlipping) return;
-    saveCurrentPageText();
-    book.pages.push("");
-    saveState();
-    flip("next");
-  });
+    const willCommit = ds.moved ? ds.progress > 0.32 : true; // a plain tap always completes the flip
 
-  deletePageBtn.addEventListener("click", () => {
-    const book = getCurrentBook();
-    if (!book || isFlipping) return;
-    if (book.pages.length <= 1) {
-      askConfirm("Это единственная страница в книге. Очистить её текст?", () => {
-        book.pages[0] = "";
-        saveState();
+    ds.flipPage.style.transition = "transform 0.35s cubic-bezier(.4,.1,.2,1), opacity 0.35s ease";
+    ds.shade.style.transition = "opacity 0.35s ease";
+
+    if (willCommit) {
+      ds.flipPage.style.transform = `rotateY(${ds.endDeg}deg)`;
+      ds.shade.style.opacity = "0";
+      playPageFlipSound();
+      setTimeout(() => {
+        ds.flipPage.remove();
+        if (ds.isNew && book) { book.pages.push(""); saveState(); }
+        const leavingIndex = currentPage;
+        currentPage = ds.targetPage;
+        if (ds.direction === "prev") trimTrailingEmpty(leavingIndex);
+        isFlipping = false;
         renderPage();
-      });
-      return;
+      }, 360);
+    } else {
+      ds.flipPage.style.transform = `rotateY(${ds.startDeg}deg)`;
+      ds.shade.style.opacity = "0";
+      setTimeout(() => {
+        ds.flipPage.remove();
+        pageEditable.style.opacity = "1";
+        isFlipping = false;
+      }, 360);
     }
-    askConfirm(`Удалить страницу ${currentPage + 1}?`, () => {
-      book.pages.splice(currentPage, 1);
-      if (currentPage >= book.pages.length) currentPage = book.pages.length - 1;
-      saveState();
-      renderPage();
+  }
+
+  function attachCornerDrag(el, direction) {
+    el.addEventListener("pointerdown", (e) => {
+      if (isFlipping) return;
+      e.preventDefault();
+      const ds = startDrag(direction, e.clientX);
+      if (!ds) return;
+      dragState = ds;
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+
+      const onMove = (ev) => {
+        if (!dragState) return;
+        if (Math.abs(ev.clientX - dragState.startX) > 4) dragState.moved = true;
+        updateDrag(ev.clientX);
+      };
+      const onUp = () => {
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+        endDrag();
+      };
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
     });
-  });
+  }
+
+  attachCornerDrag(cornerNext, "next");
+  attachCornerDrag(cornerPrev, "prev");
+
+  function quickFlip(direction) {
+    if (isFlipping) return;
+    const ds = startDrag(direction, 0);
+    if (!ds) return;
+    dragState = ds;
+    dragState.moved = false;
+    dragState.progress = 1;
+    endDrag();
+  }
 
   document.addEventListener("keydown", (e) => {
     if (reader.classList.contains("hidden")) return;
     if (document.activeElement === pageEditable) return;
-    if (e.key === "ArrowRight") flip("next");
-    if (e.key === "ArrowLeft") flip("prev");
+    if (e.key === "ArrowRight") quickFlip("next");
+    if (e.key === "ArrowLeft") quickFlip("prev");
     if (e.key === "Escape") closeReaderFn();
   });
 

@@ -88,15 +88,6 @@ body {
 
 .btn-sm { font-size: 14px; padding: 6px 12px; }
 
-.btn-nav {
-  background: linear-gradient(180deg, #6b4726, #4a3016);
-  color: #f3e6cc;
-  padding: 10px 22px;
-  box-shadow: 0 3px 0 #2f1d0c, 0 6px 10px rgba(0,0,0,0.35);
-}
-.btn-nav:disabled { opacity: 0.35; cursor: default; }
-.btn-nav:hover:not(:disabled) { filter: brightness(1.12); }
-
 /* ============ ROOM / SHELVES ============ */
 .room {
   padding: 30px 40px 80px;
@@ -286,7 +277,7 @@ body {
   position: fixed; inset: 0;
   background: rgba(20, 12, 4, 0.55);
   display: flex; align-items: center; justify-content: center;
-  z-index: 100;
+  z-index: 300;
   animation: fadeIn .18s ease;
 }
 .modal-overlay.hidden { display: none; }
@@ -453,35 +444,28 @@ body {
   background: radial-gradient(ellipse at center, #2a1c10 0%, #0f0904 100%);
 }
 
-.reader-close {
+.reader-controls {
   position: absolute;
-  top: 18px; right: 26px;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+}
+.icon-btn {
   width: 42px; height: 42px;
   border-radius: 50%;
   border: none;
   background: rgba(255,255,255,0.12);
   color: #f3e6cc;
-  font-size: 24px;
+  font-size: 19px;
   cursor: pointer;
-  z-index: 5;
-}
-.reader-close:hover { background: rgba(255,255,255,0.25); }
-
-.reader-toolbar {
-  position: relative;
-  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
-  color: #f3e6cc;
+  justify-content: center;
 }
-.reader-title {
-  font-family: "Merriweather", serif;
-  font-size: 20px;
-  font-weight: 700;
-  margin-right: 6px;
-}
+.icon-btn:hover { background: rgba(255,255,255,0.25); }
+#closeReader { font-size: 24px; }
 
 .book-stage {
   position: relative;
@@ -533,7 +517,8 @@ body {
     inset -40px 0 50px -42px rgba(0,0,0,0.28);
   background-image:
     linear-gradient(90deg, rgba(0,0,0,0.08) 0%, transparent 2%),
-    repeating-linear-gradient(0deg, transparent 0 34px, rgba(90,70,40,0.08) 34px 35px);
+    radial-gradient(ellipse at 28% 18%, rgba(255,255,255,0.55), transparent 55%),
+    radial-gradient(ellipse at 85% 95%, rgba(0,0,0,0.06), transparent 50%);
   padding: 30px 26px 40px 34px;
   transform-style: preserve-3d;
   overflow: hidden;
@@ -562,28 +547,42 @@ body {
   font-style: italic;
 }
 
-.page-number {
+.printed-page-num {
   position: absolute;
-  bottom: 10px;
-  right: 22px;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: "Cormorant Garamond", serif;
   font-size: 13px;
-  color: rgba(60,45,25,0.55);
+  letter-spacing: 1px;
+  color: rgba(60,45,25,0.5);
+  z-index: 2;
+  pointer-events: none;
 }
-#pageContentLeft { display: none; }
 
 .page-corner {
   position: absolute;
+  top: 0;
   bottom: 0;
-  width: 46px;
-  height: 46px;
-  cursor: pointer;
+  width: 22%;
+  cursor: grab;
   z-index: 6;
+  touch-action: none;
+}
+.page-corner:active { cursor: grabbing; }
+.page-corner-next {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.08), transparent 60%);
   opacity: 0;
 }
-.page-corner-next { right: 0; background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.12) 51%); }
-.page-corner-prev { left: 0; background: linear-gradient(45deg, transparent 50%, rgba(0,0,0,0.12) 51%); }
-.page-corner:hover { opacity: 1; }
+.page-corner-prev {
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.08), transparent 60%);
+  opacity: 0;
+}
+@media (hover: hover) {
+  .page-corner:hover { opacity: 1; }
+}
 
 /* the flipping page overlay */
 .flip-layer {
@@ -616,7 +615,9 @@ body {
   overflow: hidden;
   border-radius: 4px 10px 10px 4px;
   box-shadow: 0 2px 0 var(--paper-dark);
-  background-image: repeating-linear-gradient(0deg, transparent 0 34px, rgba(90,70,40,0.08) 34px 35px);
+  background-image:
+    radial-gradient(ellipse at 28% 18%, rgba(255,255,255,0.55), transparent 55%),
+    radial-gradient(ellipse at 85% 95%, rgba(0,0,0,0.06), transparent 50%);
 }
 .flip-face.back {
   transform: rotateY(180deg);
@@ -628,22 +629,6 @@ body {
   opacity: 0;
   border-radius: 4px 10px 10px 4px;
   pointer-events: none;
-}
-
-.reader-nav {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-top: 16px;
-  color: #f3e6cc;
-}
-.page-indicator {
-  font-family: "Cormorant Garamond", serif;
-  font-size: 16px;
-  min-width: 90px;
-  text-align: center;
 }
 
 /* scrollbar styling for editable page */
