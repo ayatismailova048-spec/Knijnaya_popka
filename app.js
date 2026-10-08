@@ -607,7 +607,11 @@
       flipLayer.appendChild(flap);
       pageStatic.style.transition = "none";
 
-      return Object.assign(base, { mode: "peel", caseName, C, flap });
+      const initialP = {
+        x: clamp((clientX ?? areaRect.left + C.x) - areaRect.left, 0, W),
+        y: clamp((clientY ?? areaRect.top + C.y) - areaRect.top, 0, H)
+      };
+      return Object.assign(base, { mode: "peel", caseName, C, flap, lastP: initialP });
     }
 
     const currentText = book.pages[currentPage] || "";
@@ -654,7 +658,25 @@
 
     if (dragState.mode === "peel") {
       const r = dragState.areaRect;
-      const rawP = { x: clamp(clientX - r.left, 0, dragState.W), y: clamp(clientY - r.top, 0, dragState.H) };
+      let rawP = { x: clamp(clientX - r.left, 0, dragState.W), y: clamp(clientY - r.top, 0, dragState.H) };
+
+      // Touch input occasionally delivers one wild sample (sensor glitch, palm
+      // brush, browser touch-prediction) wildly far from the last real position.
+      // A single such sample must not be allowed to snap the fold to a bogus
+      // shape; smooth it out by capping how far a single frame can move it.
+      if (dragState.lastP) {
+        const jump = Math.hypot(rawP.x - dragState.lastP.x, rawP.y - dragState.lastP.y);
+        const maxJump = Math.min(dragState.W, dragState.H) * 0.45;
+        if (jump > maxJump) {
+          const t = maxJump / jump;
+          rawP = {
+            x: dragState.lastP.x + (rawP.x - dragState.lastP.x) * t,
+            y: dragState.lastP.y + (rawP.y - dragState.lastP.y) * t
+          };
+        }
+      }
+      dragState.lastP = rawP;
+
       const dx = Math.abs(rawP.x - dragState.C.x);
       dragState.progress = clamp(dx / (dragState.W * 0.85), 0, 1);
 
