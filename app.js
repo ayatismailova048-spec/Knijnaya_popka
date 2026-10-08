@@ -709,6 +709,17 @@
       };
 
       const { M, phi, E1, E2 } = computeFold(dragState.caseName, dragState.C, P, dragState.W, dragState.H);
+
+      // Last line of defense: whatever produced this frame's numbers, the fold
+      // triangle has to stay a plausible corner curl. If either edge point ends
+      // up further from the corner than the capped reach could ever justify,
+      // something upstream went wrong for this one frame — leave the picture as
+      // it was rather than flash a broken shape.
+      const reach = radius * 2.5 + 4;
+      const okE1 = Math.hypot(E1.x - dragState.C.x, E1.y - dragState.C.y) <= reach;
+      const okE2 = Math.hypot(E2.x - dragState.C.x, E2.y - dragState.C.y) <= reach;
+      if (!okE1 || !okE2 || !isFinite(phi)) return;
+
       dragState.flap.style.clipPath = pointsToPolygon([dragState.C, E1, E2]);
       dragState.flap.style.transform = reflectTransform(M, phi);
       pageStatic.style.clipPath = staticPagePolygon(dragState.caseName, E1, E2, dragState.W, dragState.H);
