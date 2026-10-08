@@ -466,6 +466,7 @@ body {
 }
 .icon-btn:hover { background: rgba(255,255,255,0.25); }
 #closeReader { font-size: 24px; }
+.icon-btn svg[hidden] { display: none !important; }
 
 .book-stage {
   position: relative;
