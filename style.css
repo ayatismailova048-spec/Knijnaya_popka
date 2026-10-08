@@ -668,5 +668,5 @@ body {
   .topbar h1 { font-size: 21px; }
   .room { padding: 20px 14px 60px; }
   .book-stage { width: 94vw; height: 66vh; }
-  .page-area, .flip-face { padding: 22px 16px 34px 26px; }
+  .page-static, .flip-face { padding: 22px 16px 34px 26px; }
 }
