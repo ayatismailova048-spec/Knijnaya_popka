@@ -67,6 +67,7 @@
   const closeReader = document.getElementById("closeReader");
   const bookSpineSide = document.getElementById("bookSpineSide");
   const pageArea = document.getElementById("pageArea");
+  const pageStatic = document.getElementById("pageStatic");
   const pageEditable = document.getElementById("pageEditable");
   const printedPageNum = document.getElementById("printedPageNum");
   const flipLayer = document.getElementById("flipLayer");
@@ -512,7 +513,66 @@
   }
 
   const FLIP_SETTLE_MS = 520;
-  const MAX_CURL_SKEW = 9; // degrees — how much the page bends, like paper and not cardboard
+  const MAX_CURL_SKEW = 9; // degrees — how much a middle-grab flip bends, like paper and not cardboard
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // ---- corner-peel geometry: folding a corner so point C lands on point P is,
+  // in real paper, a reflection across the perpendicular bisector of segment C-P.
+  // That gives us the fold line, and everything on C's side of it is the part
+  // that visibly lifts and bends back.
+
+  function computeFold(caseName, C, P, W, H) {
+    const d = { x: P.x - C.x, y: P.y - C.y };
+    const len = Math.hypot(d.x, d.y) || 1;
+    const n = { x: d.x / len, y: d.y / len };
+    const lineDir = { x: -n.y, y: n.x }; // perpendicular to C→P
+    const M = { x: (C.x + P.x) / 2, y: (C.y + P.y) / 2 };
+
+    let onH, onV; // intersections with the two page edges meeting at C
+    if (Math.abs(lineDir.y) > 1e-6) {
+      const t = (C.y - M.y) / lineDir.y;
+      onH = { x: clamp(M.x + t * lineDir.x, 0, W), y: C.y };
+    } else {
+      onH = { x: clamp(M.x, 0, W), y: C.y };
+    }
+    if (Math.abs(lineDir.x) > 1e-6) {
+      const t = (C.x - M.x) / lineDir.x;
+      onV = { x: C.x, y: clamp(M.y + t * lineDir.y, 0, H) };
+    } else {
+      onV = { x: C.x, y: clamp(M.y, 0, H) };
+    }
+
+    // E1/E2 in the order the polygon below needs to trace the page boundary
+    let E1, E2;
+    if (caseName === "next-top") { E1 = onH; E2 = onV; }
+    else if (caseName === "next-bottom") { E1 = onV; E2 = onH; }
+    else if (caseName === "prev-top") { E1 = onV; E2 = onH; }
+    else { E1 = onH; E2 = onV; } // prev-bottom
+
+    const phi = Math.atan2(lineDir.y, lineDir.x) * 180 / Math.PI;
+    return { M, phi, E1, E2 };
+  }
+
+  function pointsToPolygon(points) {
+    return "polygon(" + points.map(p => `${p.x.toFixed(1)}px ${p.y.toFixed(1)}px`).join(", ") + ")";
+  }
+
+  // the full page rectangle with the C corner sliced off along E1-E2
+  function staticPagePolygon(caseName, E1, E2, W, H) {
+    const TL = { x: 0, y: 0 }, TR = { x: W, y: 0 }, BR = { x: W, y: H }, BL = { x: 0, y: H };
+    let pts;
+    if (caseName === "next-top") pts = [BL, TL, E1, E2, BR];
+    else if (caseName === "next-bottom") pts = [TL, TR, E1, E2, BL];
+    else if (caseName === "prev-top") pts = [BR, BL, E1, E2, TR];
+    else pts = [TR, BR, E1, E2, TL]; // prev-bottom
+    return pointsToPolygon(pts);
+  }
+
+  function reflectTransform(M, phiDeg) {
+    return `translate(${M.x.toFixed(1)}px, ${M.y.toFixed(1)}px) rotate(${phiDeg.toFixed(2)}deg) `
+      + `scaleY(-1) rotate(${(-phiDeg).toFixed(2)}deg) translate(${(-M.x).toFixed(1)}px, ${(-M.y).toFixed(1)}px)`;
+  }
 
   function startDrag(direction, clientX, clientY) {
     const book = getCurrentBook();
@@ -524,9 +584,34 @@
     saveCurrentPageText();
     isFlipping = true;
 
+    const areaRect = pageArea.getBoundingClientRect();
+    const W = Math.max(1, areaRect.width), H = Math.max(1, areaRect.height);
+    const grabRatio = clientY == null ? 0.5 : clamp((clientY - areaRect.top) / H, 0, 1);
+
+    const base = {
+      direction, targetPage, isNew, areaRect, W, H,
+      startClientX: clientX, startClientY: clientY,
+      progress: 0, moved: false
+    };
+
+    // Grabbing near the top or bottom edge peels that corner, like lifting a real
+    // page by its corner. Grabbing near the middle keeps the familiar straight flip.
+    if (grabRatio < 0.35 || grabRatio > 0.65) {
+      const corner = grabRatio < 0.5 ? "top" : "bottom";
+      const caseName = `${direction}-${corner}`;
+      const C = { x: direction === "next" ? W : 0, y: corner === "top" ? 0 : H };
+
+      const flap = document.createElement("div");
+      flap.className = "peel-flap";
+      flap.style.clipPath = pointsToPolygon([C, C, C]);
+      flipLayer.appendChild(flap);
+      pageStatic.style.transition = "none";
+
+      return Object.assign(base, { mode: "peel", caseName, C, flap });
+    }
+
     const currentText = book.pages[currentPage] || "";
     const targetText = isNew ? "" : (book.pages[targetPage] || "");
-
     const flipPage = document.createElement("div");
     flipPage.className = "flip-page";
     const shade = document.createElement("div");
@@ -550,20 +635,10 @@
     flipLayer.appendChild(flipPage);
     void flipPage.offsetWidth;
 
-    // Where vertically the page was grabbed: -1 (top edge) .. 0 (middle) .. 1 (bottom edge).
-    // A real page doesn't fold along a perfectly straight vertical crease — it bends more
-    // the further from the middle you hold it, and bends the opposite way at top vs bottom.
-    const areaRect = pageArea.getBoundingClientRect();
-    const grabRatio = clientY == null ? 0.5 : (clientY - areaRect.top) / Math.max(1, areaRect.height);
-    const skewSign = Math.max(-1, Math.min(1, (grabRatio - 0.5) * 2));
+    const skewSign = clamp((grabRatio - 0.5) * 2, -1, 1);
     shade.style.setProperty("--fold-angle", `${90 + skewSign * 18}deg`);
 
-    return {
-      direction, targetPage, isNew, flipPage, shade, skewSign,
-      startX: clientX, startDeg, endDeg,
-      width: Math.max(1, areaRect.width),
-      progress: 0, moved: false
-    };
+    return Object.assign(base, { mode: "flat", flipPage, shade, skewSign, startDeg, endDeg });
   }
 
   function curlTransform(deg, progress, skewSign) {
@@ -571,16 +646,105 @@
     return `rotateY(${deg}deg) skewY(${skewDeg}deg)`;
   }
 
-  function updateDrag(clientX) {
+  function updateDrag(clientX, clientY) {
     if (!dragState) return;
-    const dx = clientX - dragState.startX;
+    if (Math.abs(clientX - dragState.startClientX) > 4 || Math.abs(clientY - dragState.startClientY) > 4) {
+      dragState.moved = true;
+    }
+
+    if (dragState.mode === "peel") {
+      const r = dragState.areaRect;
+      const P = { x: clamp(clientX - r.left, 0, dragState.W), y: clamp(clientY - r.top, 0, dragState.H) };
+      const dx = Math.abs(P.x - dragState.C.x);
+      dragState.progress = clamp(dx / (dragState.W * 0.85), 0, 1);
+
+      if (Math.hypot(P.x - dragState.C.x, P.y - dragState.C.y) < 6) {
+        dragState.flap.style.clipPath = pointsToPolygon([dragState.C, dragState.C, dragState.C]);
+        pageStatic.style.clipPath = "none";
+        return;
+      }
+
+      const { M, phi, E1, E2 } = computeFold(dragState.caseName, dragState.C, P, dragState.W, dragState.H);
+      dragState.flap.style.clipPath = pointsToPolygon([dragState.C, E1, E2]);
+      dragState.flap.style.transform = reflectTransform(M, phi);
+      pageStatic.style.clipPath = staticPagePolygon(dragState.caseName, E1, E2, dragState.W, dragState.H);
+      return;
+    }
+
+    const dx = clientX - dragState.startClientX;
     const dir = dragState.direction === "next" ? -1 : 1;
-    const raw = (dx * dir) / (dragState.width * 0.85);
-    const progress = Math.max(0, Math.min(1, raw));
+    const progress = clamp((dx * dir) / (dragState.W * 0.85), 0, 1);
     dragState.progress = progress;
     const deg = dragState.startDeg + (dragState.endDeg - dragState.startDeg) * progress;
     dragState.flipPage.style.transform = curlTransform(deg, progress, dragState.skewSign);
     dragState.shade.style.opacity = String(Math.sin(progress * Math.PI) * 0.9);
+  }
+
+  // Hand a committed/cancelled corner peel off to the plain rotateY flip, picking
+  // up roughly where the peel left off so the finishing motion stays continuous.
+  function finishPeelToFlat(ds, book) {
+    ds.flap.remove();
+    pageStatic.style.transition = "";
+    pageStatic.style.clipPath = "none";
+
+    const currentText = book.pages[currentPage] || "";
+    const targetText = ds.isNew ? "" : (book.pages[ds.targetPage] || "");
+    const flipPage = document.createElement("div");
+    flipPage.className = "flip-page";
+    const shade = document.createElement("div");
+    shade.className = "flip-shade";
+
+    let front, back, startDeg, endDeg;
+    if (ds.direction === "next") {
+      front = buildFlipFace(currentText);
+      back = buildFlipFace(targetText, "back");
+      startDeg = 0; endDeg = -180;
+    } else {
+      front = buildFlipFace(targetText);
+      back = buildFlipFace(currentText, "back");
+      startDeg = -180; endDeg = 0;
+    }
+    flipPage.appendChild(front);
+    flipPage.appendChild(back);
+    flipPage.appendChild(shade);
+    flipPage.style.transform = `rotateY(${startDeg}deg)`;
+    pageEditable.style.opacity = "0";
+    flipLayer.appendChild(flipPage);
+    void flipPage.offsetWidth;
+
+    flipPage.style.transition = `transform ${FLIP_SETTLE_MS}ms cubic-bezier(.4,.1,.2,1)`;
+    shade.style.transition = `opacity ${FLIP_SETTLE_MS}ms ease`;
+    requestAnimationFrame(() => {
+      flipPage.style.transform = `rotateY(${endDeg}deg)`;
+      shade.style.opacity = "1";
+      setTimeout(() => { shade.style.opacity = "0"; }, FLIP_SETTLE_MS * 0.55);
+    });
+    playPageFlipSound();
+
+    setTimeout(() => {
+      flipPage.remove();
+      if (ds.isNew && book) { book.pages.push(""); saveState(); }
+      const leavingIndex = currentPage;
+      currentPage = ds.targetPage;
+      if (ds.direction === "prev") trimTrailingEmpty(leavingIndex);
+      isFlipping = false;
+      renderPage();
+    }, FLIP_SETTLE_MS + 40);
+  }
+
+  function cancelPeel(ds) {
+    const collapsedFlap = pointsToPolygon([ds.C, ds.C, ds.C]);
+    const collapsedStatic = staticPagePolygon(ds.caseName, ds.C, ds.C, ds.W, ds.H);
+    ds.flap.style.transition = `clip-path ${FLIP_SETTLE_MS}ms ease`;
+    pageStatic.style.transition = `clip-path ${FLIP_SETTLE_MS}ms ease`;
+    ds.flap.style.clipPath = collapsedFlap;
+    pageStatic.style.clipPath = collapsedStatic;
+    setTimeout(() => {
+      ds.flap.remove();
+      pageStatic.style.transition = "none";
+      pageStatic.style.clipPath = "none";
+      isFlipping = false;
+    }, FLIP_SETTLE_MS + 20);
   }
 
   function endDrag() {
@@ -589,6 +753,12 @@
     dragState = null;
     const book = getCurrentBook();
     const willCommit = ds.moved ? ds.progress > 0.32 : true; // a plain tap always completes the flip
+
+    if (ds.mode === "peel") {
+      if (willCommit) finishPeelToFlat(ds, book);
+      else cancelPeel(ds);
+      return;
+    }
 
     const transition = `transform ${FLIP_SETTLE_MS}ms cubic-bezier(.4,.1,.2,1), opacity ${FLIP_SETTLE_MS}ms ease`;
     ds.flipPage.style.transition = transition;
@@ -629,8 +799,7 @@
 
       const onMove = (ev) => {
         if (!dragState) return;
-        if (Math.abs(ev.clientX - dragState.startX) > 4) dragState.moved = true;
-        updateDrag(ev.clientX);
+        updateDrag(ev.clientX, ev.clientY);
       };
       const onUp = () => {
         el.removeEventListener("pointermove", onMove);
@@ -649,7 +818,7 @@
 
   function quickFlip(direction) {
     if (isFlipping) return;
-    const ds = startDrag(direction, 0);
+    const ds = startDrag(direction, 0, null); // clientY omitted -> middle grab -> plain flip
     if (!ds) return;
     dragState = ds;
     dragState.moved = false;
