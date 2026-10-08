@@ -511,7 +511,10 @@
     }
   }
 
-  function startDrag(direction, clientX) {
+  const FLIP_SETTLE_MS = 520;
+  const MAX_CURL_SKEW = 9; // degrees — how much the page bends, like paper and not cardboard
+
+  function startDrag(direction, clientX, clientY) {
     const book = getCurrentBook();
     if (!book || isFlipping) return null;
     const targetPage = direction === "next" ? currentPage + 1 : currentPage - 1;
@@ -547,12 +550,25 @@
     flipLayer.appendChild(flipPage);
     void flipPage.offsetWidth;
 
+    // Where vertically the page was grabbed: -1 (top edge) .. 0 (middle) .. 1 (bottom edge).
+    // A real page doesn't fold along a perfectly straight vertical crease — it bends more
+    // the further from the middle you hold it, and bends the opposite way at top vs bottom.
+    const areaRect = pageArea.getBoundingClientRect();
+    const grabRatio = clientY == null ? 0.5 : (clientY - areaRect.top) / Math.max(1, areaRect.height);
+    const skewSign = Math.max(-1, Math.min(1, (grabRatio - 0.5) * 2));
+    shade.style.setProperty("--fold-angle", `${90 + skewSign * 18}deg`);
+
     return {
-      direction, targetPage, isNew, flipPage, shade,
+      direction, targetPage, isNew, flipPage, shade, skewSign,
       startX: clientX, startDeg, endDeg,
-      width: Math.max(1, pageArea.getBoundingClientRect().width),
+      width: Math.max(1, areaRect.width),
       progress: 0, moved: false
     };
+  }
+
+  function curlTransform(deg, progress, skewSign) {
+    const skewDeg = skewSign * MAX_CURL_SKEW * Math.sin(progress * Math.PI);
+    return `rotateY(${deg}deg) skewY(${skewDeg}deg)`;
   }
 
   function updateDrag(clientX) {
@@ -563,7 +579,7 @@
     const progress = Math.max(0, Math.min(1, raw));
     dragState.progress = progress;
     const deg = dragState.startDeg + (dragState.endDeg - dragState.startDeg) * progress;
-    dragState.flipPage.style.transform = `rotateY(${deg}deg)`;
+    dragState.flipPage.style.transform = curlTransform(deg, progress, dragState.skewSign);
     dragState.shade.style.opacity = String(Math.sin(progress * Math.PI) * 0.9);
   }
 
@@ -574,11 +590,12 @@
     const book = getCurrentBook();
     const willCommit = ds.moved ? ds.progress > 0.32 : true; // a plain tap always completes the flip
 
-    ds.flipPage.style.transition = "transform 0.35s cubic-bezier(.4,.1,.2,1), opacity 0.35s ease";
-    ds.shade.style.transition = "opacity 0.35s ease";
+    const transition = `transform ${FLIP_SETTLE_MS}ms cubic-bezier(.4,.1,.2,1), opacity ${FLIP_SETTLE_MS}ms ease`;
+    ds.flipPage.style.transition = transition;
+    ds.shade.style.transition = `opacity ${FLIP_SETTLE_MS}ms ease`;
 
     if (willCommit) {
-      ds.flipPage.style.transform = `rotateY(${ds.endDeg}deg)`;
+      ds.flipPage.style.transform = curlTransform(ds.endDeg, 1, ds.skewSign);
       ds.shade.style.opacity = "0";
       playPageFlipSound();
       setTimeout(() => {
@@ -589,15 +606,15 @@
         if (ds.direction === "prev") trimTrailingEmpty(leavingIndex);
         isFlipping = false;
         renderPage();
-      }, 360);
+      }, FLIP_SETTLE_MS + 20);
     } else {
-      ds.flipPage.style.transform = `rotateY(${ds.startDeg}deg)`;
+      ds.flipPage.style.transform = curlTransform(ds.startDeg, 0, ds.skewSign);
       ds.shade.style.opacity = "0";
       setTimeout(() => {
         ds.flipPage.remove();
         pageEditable.style.opacity = "1";
         isFlipping = false;
-      }, 360);
+      }, FLIP_SETTLE_MS + 20);
     }
   }
 
@@ -605,7 +622,7 @@
     el.addEventListener("pointerdown", (e) => {
       if (isFlipping) return;
       e.preventDefault();
-      const ds = startDrag(direction, e.clientX);
+      const ds = startDrag(direction, e.clientX, e.clientY);
       if (!ds) return;
       dragState = ds;
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
