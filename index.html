@@ -15,6 +15,12 @@
   <button id="addShelfBtn" class="btn btn-primary">+ Добавить полку</button>
 </header>
 
+<div class="backup-bar">
+  <button id="exportBtn" class="btn btn-ghost">💾 Сохранить копию в файл</button>
+  <button id="importBtn" class="btn btn-ghost">📂 Загрузить копию из файла</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+</div>
+
 <main id="room" class="room"></main>
 
 <!-- ===== Модалка: добавить книгу ===== -->

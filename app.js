@@ -27,7 +27,11 @@
   }
 
   function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      alert("Не удалось сохранить: в браузере нет места. Сохраните копию в файл.");
+    }
   }
 
   function uid() {
@@ -1015,6 +1019,49 @@
     if (e.key === "ArrowLeft") quickFlip("prev");
     if (e.key === "Escape") closeReaderFn();
   });
+
+  // ---------- backup: save / load a copy as a file ----------
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importFile = document.getElementById("importFile");
+
+  exportBtn.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "knijnaya-popka-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  importBtn.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", () => {
+    const file = importFile.files[0];
+    importFile.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(reader.result); } catch (e) { data = null; }
+      if (!data || !Array.isArray(data.shelves)) {
+        alert("Это не файл «Книжной полки».");
+        return;
+      }
+      askConfirm("Заменить все полки и книги данными из файла?", () => {
+        state = data;
+        saveState();
+        render();
+      });
+    };
+    reader.readAsText(file);
+  });
+
+  // ask the browser not to clear our data on its own
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
 
   // ---------- init ----------
   render();
